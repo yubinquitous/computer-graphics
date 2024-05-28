@@ -1,6 +1,6 @@
 #pragma comment(lib, "glaux")
 #pragma comment(lib, "legacy_stdio_definitions")
-#pragma warning(disable:4996) // fopen 사용을 위함
+#pragma warning(disable:4996) //visual 2015에서 fopen_s를 사용해야 하고 fopen을 사용시 오류가 나기 때문에 사용하기위해 설정한 것
 #include <windows.h>
 #include <glut.h>
 #include <iostream>
@@ -114,14 +114,13 @@ int loadGLTextures(void) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
-        printf("Loaded texture head_doraemon.bmp: %d x %d\n", TextureImage[0]->sizeX, TextureImage[0]->sizeY);
-        checkGLError("loadGLTextures - head_doraemon.bmp");
+        checkGLError("loadGLTextures - head.bmp");
     }
     else {
-        printf("loadBMP fail for head_doraemon.bmp\n");
+        printf("loadBMP fail for head.bmp\n");
     }
 
-    // Load second texture
+    // TODO: body 이미지
     if ((TextureImage[1] = loadBMP("last_head.bmp"))) {
         Status = TRUE;
         glGenTextures(1, &texture[1]);
@@ -130,11 +129,10 @@ int loadGLTextures(void) {
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[1]->sizeX, TextureImage[1]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[1]->data);
-        printf("Loaded texture head24.bmp: %d x %d\n", TextureImage[1]->sizeX, TextureImage[1]->sizeY);
-        checkGLError("loadGLTextures - head24.bmp");
+        checkGLError("loadGLTextures - body.bmp");
     }
     else {
-        printf("loadBMP fail for head24.bmp\n");
+        printf("loadBMP fail for body.bmp\n");
     }
 
     // Free texture data
