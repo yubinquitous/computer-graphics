@@ -1,6 +1,7 @@
 #pragma comment(lib, "glaux")
 #pragma comment(lib, "legacy_stdio_definitions")
-#pragma warning(disable:4996) //visual 2015에서 fopen_s를 사용해야 하고 fopen을 사용시 오류가 나기 때문에 사용하기위해 설정한 것
+#pragma warning(disable:4996)
+
 #include <windows.h>
 #include <glut.h>
 #include <iostream>
@@ -8,8 +9,6 @@
 #include <glaux.h>
 #include <GL.h>
 #include <GLU.h>
-#define COLOR_TEXTURE_NUM 16
-#define IMAGE_TEXTURE_NUM 16
 
 int viewport;
 GLfloat gYAngle, gXAngle, gZAngle;
@@ -18,17 +17,28 @@ GLuint texture[2];
 GLUquadricObj* body;
 GLUquadricObj* head;
 
+/*
+#define COLOR_TEXTURE_NUM 16
+#define IMAGE_TEXTURE_NUM 16
 #define ZERO 0
 #define INT_ONE 1
 #define FlOAT_ONE 1.0
 #define ESC 27
 #define GL_PI 3.1415f
 
-void checkGLError(const char* context) {
-    GLenum err;
-    while ((err = glGetError()) != GL_NO_ERROR) {
-        printf("OpenGL error in %s: %d\n", context, err);
-    }
+void resizeWindow(int width, int height)
+{
+    if (height == ZERO)
+        height = INT_ONE;
+
+    float ratio = FlOAT_ONE * width / height;
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(35, ratio, INT_ONE, 500);
+    glMatrixMode(GL_MODELVIEW);
+    glViewport(ZERO, ZERO, width, height);
+    checkGLError("resizeWindow");
 }
 
 void reshape(int w, int h)
@@ -44,6 +54,14 @@ void display(void)
     glColor3f(1.0, 0.0, 0.0);
     glRectf(30.0, 30.0, 50.0, 50.0);
     glutSwapBuffers();
+}
+*/
+
+void checkGLError(const char* context) {
+    GLenum err;
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        printf("OpenGL error in %s: %d\n", context, err);
+    }
 }
 
 void myLight(void) {
@@ -70,102 +88,6 @@ void myLight(void) {
     glLightfv(GL_LIGHT0, GL_DIFFUSE, DiffuseColor);
     glLightfv(GL_LIGHT0, GL_POSITION, Position);
     checkGLError("myLight");
-}
-
-
-AUX_RGBImageRec* loadBMP(const char* filename)
-{
-    if (!filename)
-    {
-        printf("filename error\n");
-        return NULL;
-    }
-
-    FILE* fp = fopen(filename, "rb");
-    if (fp)
-    {
-        fclose(fp);
-        return auxDIBImageLoad(filename);
-    }
-    else
-    {
-        printf("file open failed: %s\n", filename);
-        return NULL;
-    }
-}
-
-
-int loadGLTextures(void) {
-    int Status = FALSE;
-    head = gluNewQuadric();
-    gluQuadricDrawStyle(head, GLU_FILL);
-    gluQuadricTexture(head, GL_TRUE);
-    body = gluNewQuadric();
-    gluQuadricDrawStyle(body, GLU_FILL);
-    gluQuadricTexture(body, GL_TRUE);
-    AUX_RGBImageRec* TextureImage[2] = { NULL, NULL };
-
-    // Load first texture
-    if ((TextureImage[0] = loadBMP("last_head.bmp"))) {
-        Status = TRUE;
-        glGenTextures(1, &texture[0]);
-        glBindTexture(GL_TEXTURE_2D, texture[0]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
-        checkGLError("loadGLTextures - head.bmp");
-    }
-    else {
-        printf("loadBMP fail for head.bmp\n");
-    }
-
-    // TODO: body 이미지
-    if ((TextureImage[1] = loadBMP("last_head.bmp"))) {
-        Status = TRUE;
-        glGenTextures(1, &texture[1]);
-        glBindTexture(GL_TEXTURE_2D, texture[1]);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[1]->sizeX, TextureImage[1]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[1]->data);
-        checkGLError("loadGLTextures - body.bmp");
-    }
-    else {
-        printf("loadBMP fail for body.bmp\n");
-    }
-
-    // Free texture data
-    for (int i = 0; i < 2; i++) {
-        if (TextureImage[i]) {
-            if (TextureImage[i]->data) {
-                free(TextureImage[i]->data);
-            }
-            free(TextureImage[i]);
-        }
-    }
-
-    glEnable(GL_TEXTURE_2D);
-    glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-    checkGLError("loadGLTextures");
-
-    return Status;
-}
-
-
-void resizeWindow(int width, int height)
-{
-    if (height == ZERO)
-        height = INT_ONE;
-
-    float ratio = FlOAT_ONE * width / height;
-
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(35, ratio, INT_ONE, 500);
-    glMatrixMode(GL_MODELVIEW);
-    glViewport(ZERO, ZERO, width, height);
-    checkGLError("resizeWindow");
 }
 
 void myDisplay(void) {
@@ -300,30 +222,120 @@ void myMouseMotion(GLint x, GLint y) {
     glutPostRedisplay();
 }
 
-int main(int argc, char** argv)
-{
-    glutInit(&argc, argv);
-    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-    glutInitWindowSize(600, 600);
-    glutInitWindowPosition(0, 0);
-    glutCreateWindow("anpanman");
-
-    glClearColor(1.0, 1.0, 1.0, 1.0);
-    glFrontFace(GL_CCW);
-
-    myLight();
-    if (!loadGLTextures()) {
-        printf("Failed to load textures\n");
-        return -1;
+class Initialization {
+public:
+    void InitGLUT(int& argc, char** argv) {
+        glutInit(&argc, argv);
+        glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+        glutInitWindowSize(600, 600);
+        glutInitWindowPosition(0, 0);
+        glutCreateWindow("anpanman");
     }
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+    void InitOpenGL() {
+        glClearColor(1.0, 1.0, 1.0, 1.0);
+        glFrontFace(GL_CCW);
+        myLight();
+        if (!loadGLTextures()) {
+            printf("Failed to load textures\n");
+            exit(-1);
+        }
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
+    }
 
-    glutDisplayFunc(myDisplay);
-    glutKeyboardFunc(myKeyboard);
-    glutMotionFunc(myMouseMotion);
+    void RegisterCallbacks() {
+        glutDisplayFunc(myDisplay);
+        glutKeyboardFunc(myKeyboard);
+        glutMotionFunc(myMouseMotion);
+    }
+
+private:
+    AUX_RGBImageRec* loadBMP(const char* filename)
+    {
+        if (!filename)
+        {
+            printf("filename error\n");
+            return NULL;
+        }
+
+        FILE* fp = fopen(filename, "rb");
+        if (fp)
+        {
+            fclose(fp);
+            return auxDIBImageLoad(filename);
+        }
+        else
+        {
+            printf("file open failed: %s\n", filename);
+            return NULL;
+        }
+    }
+
+    int loadGLTextures(void) {
+        int Status = FALSE;
+        head = gluNewQuadric();
+        gluQuadricDrawStyle(head, GLU_FILL);
+        gluQuadricTexture(head, GL_TRUE);
+        body = gluNewQuadric();
+        gluQuadricDrawStyle(body, GLU_FILL);
+        gluQuadricTexture(body, GL_TRUE);
+        AUX_RGBImageRec* TextureImage[2] = { NULL, NULL };
+
+        // Load first texture
+        if ((TextureImage[0] = loadBMP("last_head.bmp"))) {
+            Status = TRUE;
+            glGenTextures(1, &texture[0]);
+            glBindTexture(GL_TEXTURE_2D, texture[0]);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
+            checkGLError("loadGLTextures - head.bmp");
+        }
+        else {
+            printf("loadBMP fail for head.bmp\n");
+        }
+
+        // TODO: body 이미지
+        if ((TextureImage[1] = loadBMP("last_head.bmp"))) {
+            Status = TRUE;
+            glGenTextures(1, &texture[1]);
+            glBindTexture(GL_TEXTURE_2D, texture[1]);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[1]->sizeX, TextureImage[1]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[1]->data);
+            checkGLError("loadGLTextures - body.bmp");
+        }
+        else {
+            printf("loadBMP fail for body.bmp\n");
+        }
+
+        // Free texture data
+        for (int i = 0; i < 2; i++) {
+            if (TextureImage[i]) {
+                if (TextureImage[i]->data) {
+                    free(TextureImage[i]->data);
+                }
+                free(TextureImage[i]);
+            }
+        }
+
+        glEnable(GL_TEXTURE_2D);
+        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+        checkGLError("loadGLTextures");
+
+        return Status;
+    }
+};
+
+int main(int argc, char** argv) {
+    Initialization init;
+    init.InitGLUT(argc, argv);
+    init.InitOpenGL();
+    init.RegisterCallbacks();
 
     glutMainLoop();
     return 0;
