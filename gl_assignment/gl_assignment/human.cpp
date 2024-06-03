@@ -284,7 +284,7 @@ private:
         AUX_RGBImageRec* TextureImage[2] = { NULL, NULL };
 
         // Load first texture
-        if ((TextureImage[0] = loadBMP("last_head.bmp"))) {
+        if ((TextureImage[0] = loadBMP("head.bmp"))) {
             Status = TRUE;
             glGenTextures(1, &texture[0]);
             glBindTexture(GL_TEXTURE_2D, texture[0]);
@@ -299,7 +299,7 @@ private:
         }
 
         // TODO: body 이미지
-        if ((TextureImage[1] = loadBMP("last_head.bmp"))) {
+        if ((TextureImage[1] = loadBMP("body.bmp"))) {
             Status = TRUE;
             glGenTextures(1, &texture[1]);
             glBindTexture(GL_TEXTURE_2D, texture[1]);
