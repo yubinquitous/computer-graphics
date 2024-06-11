@@ -136,7 +136,7 @@ void myDisplay(void) {
 void drawHead(GLuint texture, GLUquadricObj* obj, GLUquadricObj* head) {
     glBindTexture(GL_TEXTURE_2D, texture);
     glRotatef(270.0, 1.0, 0.0, 0.0);
-    gluSphere(head, 0.29, 50, 30);
+    gluSphere(head, 0.26, 50, 30);
     glRotatef(90.0, 1.0, 0.0, 0.0);
 }
 
