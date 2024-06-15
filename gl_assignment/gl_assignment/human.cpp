@@ -10,157 +10,163 @@
 #include <GL.h>
 #include <GLU.h>
 
-int viewport;
-GLfloat gYAngle, gXAngle, gZAngle;
-GLint moveX, moveY;
-GLuint texture[4];
-GLUquadricObj* body;
-GLUquadricObj* head;
+GLfloat rotationX = 0.0f, rotationY = 0.0f, rotationZ = 0.0f;
+GLint mouseX = 0, mouseY = 0;
+GLfloat zoomFactor = 1.0f;
+GLuint textures[4];
+GLUquadricObj* obj;
 
-void drawHead(GLuint texture, GLUquadricObj* obj, GLUquadricObj* head);
-void drawBody(GLuint texture, GLUquadricObj* obj);
-void drawArms(GLuint texture1, GLuint texture2, GLUquadricObj* obj, GLfloat* d2);
-void drawLegs(GLuint texture1, GLuint texture2, GLUquadricObj* obj, GLfloat* d2);
+void initializeGL();
+void initializeTextures();
+void setupLighting();
+void checkGLError(const char* context);
+AUX_RGBImageRec* loadBMP(const char* filename);
+bool loadTextures();
+void drawHuman();
+void drawHead();
+void drawBody();
+void drawArms();
+void drawLegs();
+void handleReshape(int width, int height);
+void handleDisplay();
+void handleKeyboard(unsigned char key, int x, int y);
+void handleMouseMotion(int x, int y);
+void handleMouse(int button, int state, int x, int y);
 
-/*
-#define COLOR_TEXTURE_NUM 16
-#define IMAGE_TEXTURE_NUM 16
-#define ZERO 0
-#define INT_ONE 1
-#define FlOAT_ONE 1.0
-#define ESC 27
-#define GL_PI 3.1415f
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowSize(800, 600);
+    glutCreateWindow("3D Virtual Human");
 
-void resizeWindow(int width, int height)
-{
-    if (height == ZERO)
-        height = INT_ONE;
+    initializeGL();
+    initializeTextures();
+    setupLighting();
 
-    float ratio = FlOAT_ONE * width / height;
+    glutDisplayFunc(handleDisplay);
+    glutReshapeFunc(handleReshape);
+    glutKeyboardFunc(handleKeyboard);
+    glutMouseFunc(handleMouse);
+    glutMotionFunc(handleMouseMotion);
 
-    glMatrixMode(GL_PROJECTION);
-    glLoadIdentity();
-    gluPerspective(35, ratio, INT_ONE, 500);
-    glMatrixMode(GL_MODELVIEW);
-    glViewport(ZERO, ZERO, width, height);
-    checkGLError("resizeWindow");
+    glutMainLoop();
+    return 0;
 }
 
-void reshape(int w, int h)
-{
-    glLoadIdentity();
-    glViewport(0, 0, w, h);
-    gluOrtho2D(0.0, 100.0, 0.0, 100.0);
+void initializeGL() {
+    glEnable(GL_DEPTH_TEST);
+    glFrontFace(GL_CCW);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glShadeModel(GL_SMOOTH);
 }
 
-void display(void)
-{
-    glClear(GL_COLOR_BUFFER_BIT);
-    glColor3f(1.0, 0.0, 0.0);
-    glRectf(30.0, 30.0, 50.0, 50.0);
-    glutSwapBuffers();
+void initializeTextures() {
+    glGenTextures(4, textures);
+    loadTextures();
 }
-*/
+
+void setupLighting() {
+    GLfloat ambientLight[] = { 0.2f, 0.2f, 0.2f, 1.0f };
+    GLfloat diffuseLight[] = { 0.8f, 0.8f, 0.8f, 1.0f };
+    GLfloat specularLight[] = { 0.0f, 0.0f, 0.0f, 1.0f };
+    GLfloat lightPosition[] = { 100.0f, 100.0f, 400.0f, 1.0f };
+
+    glMaterialfv(GL_FRONT, GL_AMBIENT, ambientLight);
+    glMaterialfv(GL_FRONT, GL_DIFFUSE, diffuseLight);
+    glMaterialfv(GL_FRONT, GL_SPECULAR, specularLight);
+    glLightfv(GL_LIGHT1, GL_AMBIENT, ambientLight);
+    glLightfv(GL_LIGHT1, GL_DIFFUSE, diffuseLight);
+    glLightfv(GL_LIGHT1, GL_POSITION, lightPosition);
+    glEnable(GL_LIGHT1);
+    glEnable(GL_LIGHTING);
+}
 
 void checkGLError(const char* context) {
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR) {
-        printf("OpenGL error in %s: %d\n", context, err);
+        std::cerr << "OpenGL error in " << context << ": " << err << std::endl;
     }
 }
 
-void myLight(void) {
-    float AmbientColor[] = { 0.2f, 0.2f, 0.2f, 1.0f };
-    float DiffuseColor[] = { 0.8f, 0.8f, 0.8f, 1.0f };
-    float SpecularColor[] = { 0.0f, 0.0f, 0.0f, 1.0f };
-    float Position[] = { 100.0f, 100.0f, 400.0f, 1.0f };
-
-    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-    glShadeModel(GL_SMOOTH);
-
-    glEnable(GL_TEXTURE_2D);
-    glEnable(GL_DEPTH_TEST);
-    glEnable(GL_CULL_FACE);
-    glFrontFace(GL_CCW);
-
-    glEnable(GL_LIGHTING);
-    glEnable(GL_LIGHT0);
-
-    glMaterialfv(GL_FRONT, GL_AMBIENT, AmbientColor);
-    glMaterialfv(GL_FRONT, GL_DIFFUSE, DiffuseColor);
-    glMaterialfv(GL_FRONT, GL_SPECULAR, SpecularColor);
-    glLightfv(GL_LIGHT0, GL_AMBIENT, AmbientColor);
-    glLightfv(GL_LIGHT0, GL_DIFFUSE, DiffuseColor);
-    glLightfv(GL_LIGHT0, GL_POSITION, Position);
-    checkGLError("myLight");
+AUX_RGBImageRec* loadBMP(const char* filename) {
+    FILE* file = fopen(filename, "r");
+    if (!file) return nullptr;
+    fclose(file);
+    return auxDIBImageLoad(filename);
 }
 
-void myDisplay(void) {
-    GLfloat d1[] = { 0.0, 0.5, 0.83, 1.0 };
-    GLfloat d2[] = { 1.0, 1.0, 1.0, 1.0 };
-    GLfloat d3[] = { 0.7, 0.0, 0.0, 1.0 };
+bool loadTextures() {
+    AUX_RGBImageRec* textureImage[4];
+    bool status = false;
 
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-    glViewport(0 + viewport, 0 + viewport, 600 - 2 * viewport, 600 - 2 * viewport);
-    glMatrixMode(GL_MODELVIEW);
-    glLoadIdentity();
+    textureImage[0] = loadBMP("head.bmp");
+    textureImage[1] = loadBMP("body.bmp");
+    textureImage[2] = loadBMP("red.bmp");
+    textureImage[3] = loadBMP("yellow.bmp");
 
-    glRotatef(gYAngle, 0.0f, 1.0f, 0.0f);
-    glRotatef(gXAngle, 1.0f, 0.0f, 1.0f);
-    glRotatef(gZAngle, 0.0f, 0.0f, 0.0f);
+    for (int i = 0; i < 4; ++i) {
+        if (textureImage[i]) {
+            status = true;
+            glGenTextures(1, &textures[i]);
+            glBindTexture(GL_TEXTURE_2D, textures[i]);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            glTexImage2D(GL_TEXTURE_2D, 0, 3, textureImage[i]->sizeX, textureImage[i]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, textureImage[i]->data);
+            checkGLError("loadTextures");
+            if (textureImage[i]->data) free(textureImage[i]->data);
+            free(textureImage[i]);
+        }
+    }
+    return status;
+}
 
-    GLUquadricObj* obj;
+void drawHuman() {
     obj = gluNewQuadric();
     gluQuadricDrawStyle(obj, GLU_FILL);
-    gluQuadricNormals(obj, GL_SMOOTH);
-    gluQuadricTexture(obj, GL_TRUE);  // Enable texturing for this quadric
+    gluQuadricTexture(obj, GL_TRUE);
 
     glEnable(GL_TEXTURE_2D);
-    // 머리
-    drawHead(texture[0], obj, head);
 
-    // 몸통
-    drawBody(texture[1], obj);
-
-    // 팔
-    drawArms(texture[2], texture[3], obj, d2);
-
-    // 다리
-    drawLegs(texture[2], texture[3], obj, d2);
-
-    glutSwapBuffers();
-    gluDeleteQuadric(obj);
-    checkGLError("myDisplay");
+    glPushMatrix();
+    drawHead();
+    drawBody();
+    drawArms();
+    drawLegs();
+    glPopMatrix();
 }
 
-void drawHead(GLuint texture, GLUquadricObj* obj, GLUquadricObj* head) {
-    glBindTexture(GL_TEXTURE_2D, texture);
+void drawHead() {
+    glBindTexture(GL_TEXTURE_2D, textures[0]);
     glRotatef(270.0, 1.0, 0.0, 0.0);
-    gluSphere(head, 0.26, 50, 30);
+    gluSphere(obj, 0.27, 50, 30);
     glRotatef(90.0, 1.0, 0.0, 0.0);
 }
 
-void drawBody(GLuint texture, GLUquadricObj* obj) {
-    glBindTexture(GL_TEXTURE_2D, texture);
+void drawBody() {
+    glBindTexture(GL_TEXTURE_2D, textures[1]);
     glTranslatef(0.0, -0.60, 0.0);
     glRotatef(270.0, 1.0, 0.0, 0.0);
 
-// 텍스처 좌표 조정을 위한 코드를 추가합니다.
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
-    glScalef(1.0, 0.65, 1.0); // 텍스처의 Y축을 조정하여 압축을 줄입니다.
+    glScalef(1.0, 0.65, 1.0);
     glMatrixMode(GL_MODELVIEW);
 
-    // 구체 대신 원통으로 바꾸고 높이를 줄입니다. (높이를 0.4에서 0.2로 줄임)
-    gluCylinder(obj, 0.174, 0.167, 0.34, 30, 30); // 원통의 바닥 반지름, 윗부분 반지름은 유지하고 높이만 줄임.
+    gluCylinder(obj, 0.174, 0.167, 0.34, 30, 30);
 
-    // 텍스처 좌표 원래대로 복원
     glMatrixMode(GL_TEXTURE);
     glLoadIdentity();
     glMatrixMode(GL_MODELVIEW);
     glRotatef(90.0, 1.0, 0.0, 0.0);
 
-    // 목
+    // 아랫면 추가
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
+    glPushMatrix();
+    glRotatef(90, 1.0, 0.0, 0.0);
+    glTranslatef(0.0, 0.0, 0.0);
+    gluDisk(obj, 0.0, 0.174, 30, 1);
+    glPopMatrix();
+
     GLfloat d2[] = { 1.0, 1.0, 1.0, 1.0 };
     glMaterialfv(GL_FRONT, GL_DIFFUSE, d2);
     glTranslatef(0.0, 0.37, 0.0);
@@ -171,17 +177,17 @@ void drawBody(GLuint texture, GLUquadricObj* obj) {
     glTranslatef(0.0, -0.17, 0.0);
 }
 
-void drawArms(GLuint texture1, GLuint texture2, GLUquadricObj* obj, GLfloat* d2) {
-    glBindTexture(GL_TEXTURE_2D, texture1);
+void drawArms() {
+    GLfloat d2[] = { 1.0, 1.0, 1.0, 1.0 };
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, d2);
 
-    // 왼팔
     glPushMatrix();
     glTranslatef(0.13, 0.095, 0.0);
     glRotatef(90, 0.1, 0.18, 0.0);
     gluCylinder(obj, 0.065, 0.05, 0.18, 3, 3);
     glTranslatef(0.0, 0.007, 0.2);
-    glutSolidSphere(0.04, 20, 20); //팔꿈치
+    glutSolidSphere(0.04, 20, 20);
     glPopMatrix();
 
     glPushMatrix();
@@ -189,18 +195,17 @@ void drawArms(GLuint texture1, GLuint texture2, GLUquadricObj* obj, GLfloat* d2)
     glRotatef(-90, -75, 90, 0.0);
     gluCylinder(obj, 0.05, 0.05, 0.2, 3, 3);
     glTranslatef(0.0, 0.007, 0.2);
-    glBindTexture(GL_TEXTURE_2D, texture2);
-    glutSolidSphere(0.06, 20, 20); //왼손
+    glBindTexture(GL_TEXTURE_2D, textures[3]);
+    glutSolidSphere(0.06, 20, 20);
     glPopMatrix();
 
-    glBindTexture(GL_TEXTURE_2D, texture1);
-    // 오른팔
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
     glPushMatrix();
     glTranslatef(-0.13, 0.095, 0);
     glRotatef(90, 0.1, -0.18, 0.0);
     gluCylinder(obj, 0.065, 0.05, 0.18, 3, 3);
     glTranslatef(0.0, -0.008, 0.2);
-    glutSolidSphere(0.04, 20, 20); //팔꿈치
+    glutSolidSphere(0.04, 20, 20);
     glPopMatrix();
 
     glPushMatrix();
@@ -208,16 +213,16 @@ void drawArms(GLuint texture1, GLuint texture2, GLUquadricObj* obj, GLfloat* d2)
     glRotatef(90, 75, 90, 0.0);
     gluCylinder(obj, 0.05, 0.05, 0.2, 3, 3);
     glTranslatef(0.0, 0.007, 0.2);
-    glBindTexture(GL_TEXTURE_2D, texture2);
-    glutSolidSphere(0.06, 20, 20); //오른손
+    glBindTexture(GL_TEXTURE_2D, textures[3]);
+    glutSolidSphere(0.06, 20, 20);
     glPopMatrix();
 }
 
-void drawLegs(GLuint texture1, GLuint texture2, GLUquadricObj* obj, GLfloat* d2) {
-    glBindTexture(GL_TEXTURE_2D, texture1);
+void drawLegs() {
+    GLfloat d2[] = { 1.0, 1.0, 1.0, 1.0 };
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
     glMaterialfv(GL_FRONT, GL_DIFFUSE, d2);
 
-    // 오른다리
     glPushMatrix();
     glTranslatef(0.09, -0.2, 0.0);
     glRotatef(90, 0.1, 0.0, 0.0);
@@ -228,12 +233,11 @@ void drawLegs(GLuint texture1, GLuint texture2, GLUquadricObj* obj, GLfloat* d2)
     glPushMatrix();
     glTranslatef(-0.15, -0.45, 0.0);
     glRotatef(90, 0.1, 0.0, 0.02);
-    glBindTexture(GL_TEXTURE_2D, texture2);
+    glBindTexture(GL_TEXTURE_2D, textures[3]);
     glutSolidTorus(0.055, 0.04, 30, 10);
     glPopMatrix();
 
-    glBindTexture(GL_TEXTURE_2D, texture1);
-    // 왼다리
+    glBindTexture(GL_TEXTURE_2D, textures[2]);
     glPushMatrix();
     glTranslatef(-0.09, -0.2, 0.0);
     glRotatef(90, 0.1, 0.0, 0.0);
@@ -245,192 +249,59 @@ void drawLegs(GLuint texture1, GLuint texture2, GLUquadricObj* obj, GLfloat* d2)
     glTranslatef(0.15, -0.45, 0.0);
     glRotatef(270, 0.1, 0.0, 0.0);
     glRotatef(5.0, 0.0, 1.0, -0.03);
-    glBindTexture(GL_TEXTURE_2D, texture2);
+    glBindTexture(GL_TEXTURE_2D, textures[3]);
     glutSolidTorus(0.055, 0.04, 30, 30);
     glPopMatrix();
 }
 
+void handleReshape(int width, int height) {
+    if (height == 0) height = 1;
+    float aspectRatio = (float)width / (float)height;
+    glViewport(0, 0, width, height);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluPerspective(45.0f, aspectRatio, 1.0f, 500.0f);
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+}
 
+void handleDisplay() {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    glLoadIdentity();
+    glTranslatef(0.0f, 0.0f, -10.0f * zoomFactor); // Apply zoom factor
+    glRotatef(rotationX, 1.0f, 0.0f, 0.0f);
+    glRotatef(rotationY, 0.0f, 1.0f, 0.0f);
+    glRotatef(rotationZ, 0.0f, 0.0f, 1.0f);
+    drawHuman();
+    glutSwapBuffers();
+}
 
-void myKeyboard(unsigned char key, int x, int y)
-{
-    switch (key)
-    {
-    case 'z':
-        viewport += 5;
-        glutPostRedisplay();
-        break;
+void handleKeyboard(unsigned char key, int x, int y) {
+    switch (key) {
     case 'a':
-        viewport -= 5;
-        glutPostRedisplay();
+        zoomFactor *= 0.9f; // Zoom in
         break;
-    case 'q':
+    case 'z':
+        zoomFactor *= 1.1f; // Zoom out
+        break;
+    case 27: // ESC key
         exit(0);
         break;
     }
-}
-
-void myMouseMotion(GLint x, GLint y) {
-    if (x - moveX > 0)
-        gYAngle += 5.0f;
-    else if (x - moveX < 0)
-        gYAngle -= 5.0f;
-
-    if (y - moveY > 0)
-        gXAngle += 5.0f;
-    else if (y - moveY < 0)
-        gXAngle -= 5.0f;
-
-    moveX = x;
-    moveY = y;
     glutPostRedisplay();
 }
 
-class Initialization {
-public:
-    void InitGLUT(int& argc, char** argv) {
-        glutInit(&argc, argv);
-        glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
-        glutInitWindowSize(600, 600);
-        glutInitWindowPosition(0, 0);
-        glutCreateWindow("anpanman");
+void handleMouseMotion(int x, int y) {
+    rotationX += (y - mouseY);
+    rotationY += (x - mouseX);
+    mouseX = x;
+    mouseY = y;
+    glutPostRedisplay();
+}
+
+void handleMouse(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        mouseX = x;
+        mouseY = y;
     }
-
-    void InitOpenGL() {
-        glClearColor(1.0, 1.0, 1.0, 1.0);
-        glFrontFace(GL_CCW);
-        myLight();
-        if (!loadGLTextures()) {
-            printf("Failed to load textures\n");
-            exit(-1);
-        }
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(-1.0, 1.0, -1.0, 1.0, -1.0, 1.0);
-    }
-
-    void RegisterCallbacks() {
-        glutDisplayFunc(myDisplay);
-        glutKeyboardFunc(myKeyboard);
-        glutMotionFunc(myMouseMotion);
-    }
-
-private:
-    AUX_RGBImageRec* loadBMP(const char* filename)
-    {
-        if (!filename)
-        {
-            printf("filename error\n");
-            return NULL;
-        }
-
-        FILE* fp = fopen(filename, "rb");
-        if (fp)
-        {
-            fclose(fp);
-            return auxDIBImageLoad(filename);
-        }
-        else
-        {
-            printf("file open failed: %s\n", filename);
-            return NULL;
-        }
-    }
-
-    int loadGLTextures(void) {
-        int Status = FALSE;
-        head = gluNewQuadric();
-        gluQuadricDrawStyle(head, GLU_FILL);
-        gluQuadricTexture(head, GL_TRUE);
-        body = gluNewQuadric();
-        gluQuadricDrawStyle(body, GLU_FILL);
-        gluQuadricTexture(body, GL_TRUE);
-        AUX_RGBImageRec* TextureImage[4] = { NULL, NULL, NULL, NULL };
-
-        // Load head texture
-        if ((TextureImage[0] = loadBMP("head.bmp"))) {
-            Status = TRUE;
-            glGenTextures(1, &texture[0]);
-            glBindTexture(GL_TEXTURE_2D, texture[0]);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[0]->sizeX, TextureImage[0]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[0]->data);
-            checkGLError("loadGLTextures - head.bmp");
-        }
-        else {
-            printf("loadBMP fail for head.bmp\n");
-        }
-
-        // Load body texture
-        if ((TextureImage[1] = loadBMP("body.bmp"))) {
-            Status = TRUE;
-            glGenTextures(1, &texture[1]);
-            glBindTexture(GL_TEXTURE_2D, texture[1]);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[1]->sizeX, TextureImage[1]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[1]->data);
-            checkGLError("loadGLTextures - body.bmp");
-        }
-        else {
-            printf("loadBMP fail for body.bmp\n");
-        }
-
-        // Load red texture
-        if ((TextureImage[2] = loadBMP("red.bmp"))) {
-            Status = TRUE;
-            glGenTextures(1, &texture[2]);
-            glBindTexture(GL_TEXTURE_2D, texture[2]);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[2]->sizeX, TextureImage[2]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[2]->data);
-            checkGLError("loadGLTextures - red.bmp");
-        }
-        else {
-            printf("loadBMP fail for red.bmp\n");
-        }
-
-        // Load yellow texture
-        if ((TextureImage[3] = loadBMP("yellow.bmp"))) {
-            Status = TRUE;
-            glGenTextures(1, &texture[3]);
-            glBindTexture(GL_TEXTURE_2D, texture[3]);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-            glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, TextureImage[3]->sizeX, TextureImage[3]->sizeY, 0, GL_RGB, GL_UNSIGNED_BYTE, TextureImage[3]->data);
-            checkGLError("loadGLTextures - yellow.bmp");
-        }
-        else {
-            printf("loadBMP fail for yellow.bmp\n");
-        }
-
-        // Free texture data
-        for (int i = 0; i < 4; i++) {
-            if (TextureImage[i]) {
-                if (TextureImage[i]->data) {
-                    free(TextureImage[i]->data);
-                }
-                free(TextureImage[i]);
-            }
-        }
-
-        glEnable(GL_TEXTURE_2D);
-        glTexEnvi(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        checkGLError("loadGLTextures");
-
-        return Status;
-    }
-};
-
-int main(int argc, char** argv) {
-    Initialization init;
-    init.InitGLUT(argc, argv);
-    init.InitOpenGL();
-    init.RegisterCallbacks();
-
-    glutMainLoop();
-    return 0;
 }
