@@ -45,5 +45,5 @@ Run the compiled program:
 - **Exit**: Press the ESC key to exit the application.
 
 ## Contributors
-- Choi Yubin
-- Lee Sihah
+- [Choi Yubin](https://github.com/yubinquitous)
+- [Lee Sihah](https://github.com/leesiha)
